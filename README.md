@@ -7,22 +7,56 @@
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/arcitech-logo-white.png"><img src="assets/arcitech-logo-black.png" alt="ArciTech logo"></picture>
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/hero-dark.png"><img src="assets/hero-light.png" alt="Tiel-Coder XPU build and quantization release"></picture>
 
-This repository contains the public data, scripts, charts, and reproducibility
-notes for [Tiel-Coder 35B-A3B GPTQ W4A16](https://huggingface.co/arcitech-psp/Tiel-Coder-35B-A3B-W4A16-GPTQ-XPU-MTP).
-It is an independent experts-only GPTQ export of
-`ornith-ai/Ornith-1.5-35B-A3B`, with the official BF16 MTP block preserved and
-the Tiel Sharp chat template supplied by `peculiar-ragdoll`.
+ArciTech's Arc-native build of Tiel-Coder — fast, and the highest-quality build
+we measured. This repository holds the public data, scripts, charts, and
+reproducibility notes; the weights are on
+[Hugging Face](https://huggingface.co/arcitech-psp/Tiel-Coder-35B-A3B-W4A16-GPTQ-XPU-MTP).
 
 ## At a glance
 
-- **35B-parameter coding model** running on one 32 GB Intel Arc Pro B70.
-- **116.9 tokens/s for one user; 339.9 tokens/s shared across four** on GPTQ-A.
-- **219 of 224** on the internal agentic coding evaluation.
-- **Four 131,072-token conversations at once** in the measured configuration.
-- **93.5% routed expert logical parameters in GPTQ int4; 6.5% in BF16.**
+- **Best quality we measured:** 219 of 224 on our internal agentic coding
+  evaluation, ahead of the community GGUF build (216) and the AutoRound int4
+  build (213–215).
+- **Fast:** 116.9 tokens/s for one user; 339.9 tokens/s shared across four.
+- **Four 131,072-token conversations at once** on one 32 GB card.
+- **Better draft acceptance:** 74.3% of first speculative guesses accepted,
+  against 66.7% for the AutoRound int4 build.
+- **93.5% of the weights in int4; everything that steers the model kept in BF16.**
+
+## What we did to improve it
+
+Tiel-Coder is Ornith-1.5-35B-A3B's weights with `peculiar-ragdoll`'s Sharp
+chat template. The existing ways to run it on Intel Arc forced a trade-off:
+the community GGUF build scored well but its MoE kernel topped out at two
+concurrent chats, and the faster int4 build lost quality. We built our own:
+
+1. **Our own quantization from the original BF16 weights.** GPTQ int4 on the
+   routed experts only, with a separate activation-aware Hessian for every
+   expert, calibrated on agentic coding and tool-use conversations, one decoder
+   layer at a time with each layer's quantization error carried into the next.
+2. **Kept the sensitive parts in full precision.** Attention, linear attention,
+   shared experts, the router, norms, embeddings, output head, vision tower and
+   the draft head stay in BF16 — that is where the quality is protected.
+3. **Attached the official BF16 multi-token-prediction head** so the model
+   drafts several tokens per step, correctly laid out for the loader; its
+   guesses are accepted more often than the alternative build's.
+4. **Packed it for the native fused int4 MoE kernel** in vLLM XPU, so four users
+   share the card at full context instead of two.
+5. **Built and tuned the runtime** ([vllm-xpu-arc](https://github.com/arcitech-psp/vllm-xpu-arc)):
+   MTP on XPU, FP8 KV cache, and a configuration that fits four 131K-token
+   conversations on 32 GB.
+
+| Build on the same Arc Pro B70 | Internal eval (224 tasks) | Concurrent 128K chats | 1 user / 4 users (tok/s) |
+|---|---:|---:|---:|
+| **This release (GPTQ-A, ours)** | **219** | **4** | 116.9 / 339.9 |
+| AutoRound int4 build, repacked | 213–215 | 4 | 132.0 / 374.8 |
+| Community GGUF build (k-quant) | 216 | 2 | — (earlier campaign; not the same speed method) |
+
+The result is the best-scoring build we measured, within about 10% of the
+fastest one.
 
 Tokens per second (tokens/s) is how quickly generated text arrives. Higher is
-faster; shared total speed describes the combined output of several users.
+faster; shared total speed is the combined output of several users.
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/test-bench-dark.png"><img src="assets/test-bench-light.png" alt="ArciTech test bench specification card"></picture>
 
