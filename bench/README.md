@@ -8,5 +8,3 @@ not the local default.
 the supplementary prompt-processing sweep. No calibration data or prompt
 fixtures are included; the scripts generate their small deterministic test
 inputs locally.
-
-Credit: GPT 5.6 Luna (Codex), directed by Claude.

@@ -7,197 +7,183 @@
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/arcitech-logo-white.png"><img src="assets/arcitech-logo-black.png" alt="ArciTech logo"></picture>
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/hero-dark.png"><img src="assets/hero-light.png" alt="Tiel-Coder XPU build and quantization release"></picture>
 
-This repository is the public data, scripts, charts, and reproducibility notes
-for [Tiel-Coder 35B-A3B GPTQ W4A16](https://huggingface.co/arcitech-psp/Tiel-Coder-35B-A3B-W4A16-GPTQ-XPU-MTP).
-The model is an independent, experts-only GPTQ export of
+This repository contains the public data, scripts, charts, and reproducibility
+notes for [Tiel-Coder 35B-A3B GPTQ W4A16](https://huggingface.co/arcitech-psp/Tiel-Coder-35B-A3B-W4A16-GPTQ-XPU-MTP).
+It is an independent experts-only GPTQ export of
 `ornith-ai/Ornith-1.5-35B-A3B`, with the official BF16 MTP block preserved and
-the Tiel Sharp chat template supplied by `peculiar-ragdoll`. We are only
-trying to get something useful out there for people with Intel Arc hardware;
-these are measured results from one tested path, not a promise of universal
-compatibility.
+the Tiel Sharp chat template supplied by `peculiar-ragdoll`.
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/throughput-dark.png"><img src="assets/throughput-light.png" alt="FAST and GPTQ-A aggregate throughput comparison"></picture>
+## At a glance
 
-## What we did
+- **35B-parameter coding model** running on one 32 GB Intel Arc Pro B70.
+- **116.9 tokens/s for one user; 339.9 tokens/s shared across four** on GPTQ-A.
+- **219 of 224** on the internal agentic coding evaluation.
+- **Four 131,072-token conversations at once** in the measured configuration.
+- **93.5% routed expert logical parameters in GPTQ int4; 6.5% in BF16.**
 
-We kept the parts that matter for the model's general behaviour in BF16 and
-quantized only the routed expert projections. We used per-expert GPTQ with
-group size 128, propagated each quantized layer's hidden states into the next
-layer, attached the official BF16 MTP head, and served the result through the
-tested custom vLLM XPU path. The calibration conversations are private and
-are not part of this repository. The GitHub repository contains no model
-weights and no calibration prompts; the weights belong on Hugging Face.
+Tokens per second (tokens/s) is how quickly generated text arrives. Higher is
+faster; shared total speed describes the combined output of several users.
 
-## Precision map
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/test-bench-dark.png"><img src="assets/test-bench-light.png" alt="ArciTech test bench specification card"></picture>
 
-The logical parameter split is approximately 93.5% routed expert GPTQ int4
-and 6.5% BF16 for the remaining tensors. This is a logical parameter view;
-it does not count scales, packing metadata, or other storage overhead.
+## Test system
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/precision_map-dark.png"><img src="assets/precision_map-light.png" alt="Tiel-Coder logical precision map"></picture>
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/layer_gptq_relative_error-dark.png"><img src="assets/layer_gptq_relative_error-light.png" alt="GPTQ relative error by decoder layer"></picture>
+The short version: a consumer AM4 desktop with one 32 GB workstation GPU — no
+datacenter hardware.
 
-The routed expert gate, up, and down projections are packed as compressed-
-tensors unsigned nibbles with an implicit zero point of 8. Attention, Gated
-DeltaNet linear attention, shared experts, router, norms, embeddings, output
-head, vision tower, and MTP tensors remain BF16.
+<details>
+<summary>Full test system</summary>
 
-## Measured benchmark
+| Part | Value |
+|---|---|
+| GPU 1 (serves the model) | Intel Arc Pro B70, 32 GB |
+| GPU 2 (in the machine, not used for these tests) | Intel Arc A310 LP, 4 GB |
+| CPU | AMD Ryzen 7 5800X, 8 cores / 16 threads |
+| System memory | 32 GB DDR4-3200 (4 × 8 GB) |
+| Motherboard | ASUS ROG Strix B550-F Gaming (AM4, PCIe 4.0) |
+| Model storage (weights served from here) | 1 TB Samsung PM9A1 NVMe SSD (PCIe 4.0) |
+| Other storage (archive only; the model was not loaded from it) | 1.5 TB WD Green HDD |
+| OS | Ubuntu 24.04.4 LTS, Linux kernel 7.0 |
+| Intel GPU runtime | compute-runtime 26.22.38646.4 (Level Zero + OpenCL), Level Zero loader 1.28.6, IGC 2.11.12 |
+| Container | Docker 29.1.3 |
+| Serving stack | vLLM 0.27.2rc1.dev77+gac7509e2b (custom XPU build, `vllm-xpu-arc`), PyTorch 2.13.0+xpu, vllm-xpu-kernels 0.1.12.3 |
+| Serving settings | FP8 KV cache, 131,072-token context, 4 concurrent sequences, 4,096 max batched tokens, MTP with 3 draft tokens |
 
-These are the bounded client measurements shipped in `bench/`. They used one
-Intel Arc Pro B70 with 32 GB, vLLM `0.27.2rc1.dev77+gac7509e2b`, PyTorch
-`2.13.0+xpu`, FP8 KV cache, a 131,072-token maximum context, four sequence
-slots, 4,096 maximum batched tokens, and MTP with three draft tokens.
+</details>
 
-The direct reference sweep used the sanitized `bench/bench8000_sanitized.py`
-method: a deterministic coding prompt, temperature 0.2, 400 output tokens,
-decode timing after the first token, and concurrency 1/2/4. The client also
-performed one tool-call and one reasoning transport smoke check. The internal
-quality comparison below is aggregate-only; no public task contents or
-per-task records are included.
+## Results for a general audience
 
-| Concurrent streams | GPTQ-A per-stream decode tok/s | GPTQ-A aggregate decode tok/s |
-|---:|---:|---:|
-| 1 | 116.9 | 113.4 |
-| 2 | 105.9 / 113.6 | 195.6 |
-| 4 | 94.0 / 92.5 / 92.5 / 93.0 | 339.9 |
+### Speed: one user or a shared queue
 
-Reference speed comparison (`/tmp/bench8000.py`; per-stream / aggregate
-decode tok/s, with TTFT measured separately):
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/speed-comparison-dark.png"><img src="assets/speed-comparison-light.png" alt="Per-user and shared total decode speed at one, two, and four users"></picture>
 
-| Build | Concurrency 1 | Concurrency 2 | Concurrency 4 |
+GPTQ-A is the release build. FAST CT2 is the comparison build from the
+community AutoRound quant, measured with the same reference method. The speed
+chart shows both a single conversation's pace and the combined pace when users
+share the model.
+
+| Build | 1 user | 2 users | 4 users |
 |---|---:|---:|---:|
-| FAST CT2 | 132.0 / 127.7 | 120.8, 125.0 / 228.6 | 99.3, 101.1, 101.0, 100.4 / 374.8 |
-| GPTQ-A | 116.9 / 113.4 | 105.9, 113.6 / 195.6 | 94.0, 92.5, 92.5, 93.0 / 339.9 |
+| GPTQ-A (this release), per-stream / aggregate tok/s | 116.9 / 113.4 | 105.9, 113.6 / 195.6 | 94.0, 92.5, 92.5, 93.0 / 339.9 |
+| FAST CT2, per-stream / aggregate tok/s | 132.0 / 127.7 | 120.8, 125.0 / 228.6 | 99.3, 101.1, 101.0, 100.4 / 374.8 |
 
-### Internal quality comparison
+### Quality: the internal coding check
 
-The **internal 224-task agentic coding eval (tasks not released)** used the
-same deterministic `eval/runner.py` settings and 100-task JSONL for both
-builds. Only aggregate scores are published; task contents, private-work
-references, and per-task records are not included. The FAST range is from two
-recorded official-spec3 runs; GPTQ-A is the Q2 rerun.
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/quality-comparison-dark.png"><img src="assets/quality-comparison-light.png" alt="Internal 224-task coding evaluation comparison"></picture>
+
+The internal 224-task agentic coding evaluation is aggregate-only. The task
+prompts, private references, and per-task records are not released.
 
 | Build | Total | Code (184) | Tool (20) | Edit (20) |
 |---|---:|---:|---:|---:|
-| FAST CT2 | 213–215 / 224 | 176–178 | 18 | 19 |
-| GPTQ-A | 219 / 224 | 181 | 18 | 20 |
+| GPTQ-A (this release) | 219 / 224 | 181 | 18 | 20 |
+| FAST CT2 (comparison) | 213–215 / 224 | 176–178 | 18 | 19 |
 
 GPTQ-A scored higher on this internal quality comparison; FAST CT2 was faster
 on the reference decode measurement.
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/mtp_acceptance-dark.png"><img src="assets/mtp_acceptance-light.png" alt="FAST and GPTQ-A MTP acceptance comparison"></picture>
+### What is inside?
 
-The matching direct-client MTP ratios by configured draft position were 74.3%,
-50.9%, and 35.6%. Other draft counts were not measured in this bounded pass.
-Only aggregate quality scores are included; task contents and per-task records
-are not published.
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/precision-split-dark.png"><img src="assets/precision-split-light.png" alt="Logical precision split: routed expert GPTQ int4 and BF16 tensors"></picture>
 
-The supplementary PP/TG helper and result are in `bench/pp_tg.json`. The
-helpers are client-only and never start, stop, or configure a server.
+The logical parameter split is approximately 93.5% routed expert GPTQ int4 and
+6.5% BF16. This is a logical parameter view; it does not count scales, packing
+metadata, or other storage overhead.
 
-## Quick start: tested vLLM XPU path
+### MTP: accepted guesses can reduce repeated work
 
-1. Download the model from the [Hugging Face model page](https://huggingface.co/arcitech-psp/Tiel-Coder-35B-A3B-W4A16-GPTQ-XPU-MTP).
-2. Build the [vLLM XPU repository](https://github.com/arcitech-psp/vllm-xpu-arc) using its documented
-   best-working path.
-3. Set `MODEL_DIR` and `VLLM_XPU_IMAGE`, then run:
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/mtp-acceptance-dark.png"><img src="assets/mtp-acceptance-light.png" alt="MTP acceptance by draft position"></picture>
 
-```bash
-MODEL_DIR=/models/Tiel-Coder-35B-A3B-W4A16-GPTQ-XPU-MTP \
-VLLM_XPU_IMAGE=vllm-xpu-arc:local \
-bash scripts/serve-tiel-gptq.sh
-```
+Multi-token prediction (MTP) proposes a few tokens ahead. The main model checks
+those guesses; accepted guesses let it verify several tokens in one pass.
+GPTQ-A acceptance by configured draft position was 74.3%, 50.9%, and 35.6%.
 
-The tested serving flags are kept in `scripts/serve-tiel-gptq.sh` and include
-the Tiel Sharp template, BF16 compute, FP8 KV, 131,072 maximum context, four
-sequence slots, 4,096 batched tokens, three MTP drafts, the multimodal pixel
-limit, and the `qwen3_coder` and `qwen3` parsers.
+## How to read this
 
-Stock vLLM XPU 0.30.0 was attempted but did not reach a serving state: the
-legacy prompt-token flag was rejected, the corrected run hit a SYCL top-k
-warmup segfault, and a no-graph retry failed the XPU memory reservation.
-CUDA and other Intel GPUs are untested.
+- **Token:** a small piece of text; words may be one or several tokens.
+- **Tokens/s:** generated tokens per second, a practical speed measure.
+- **MoE:** mixture of experts; only selected experts handle each token.
+- **int4 / BF16:** compact 4-bit weights for routed experts and 16-bit weights for the retained tensors.
+- **MTP:** multi-token prediction; a draft path proposes tokens for the main model to verify.
+- **KV cache:** saved attention state that avoids recomputing the conversation so far.
+- **Context:** the maximum amount of conversation the model can consider at once.
 
-## Reproduce the export
+## For practitioners
 
-The scripts are sanitized reference recipes. They expect caller-owned source
-and calibration inputs; those inputs are not distributed.
+### Method and precision boundary
+
+We kept the parts that steer the model's behaviour in BF16 and quantized only
+the routed expert projections. The export uses per-expert GPTQ, group size 128,
+propagated hidden states, the official BF16 MTP head, and the Tiel Sharp chat
+template. Attention, Gated DeltaNet linear attention, shared experts, routing,
+normalization, embeddings, the output head, the vision tower, and MTP tensors
+remain BF16.
+
+The public recipe starts from the BF16
+`ornith-ai/Ornith-1.5-35B-A3B` source, gathers caller-owned activation statistics,
+quantizes routed gate/up/down projections one layer at a time, and feeds the
+dequantized hidden states into the next layer. The calibration conversations
+and prompts are private and are not included here.
+
+Packed weights use the compressed-tensors unsigned-nibble layout with an
+implicit zero point of 8 and BF16 group scales. The supplied scripts are
+sanitized reference recipes: they require caller-owned source and calibration
+inputs and do not download or expose private calibration material.
+
+### Measured serving method
+
+The bounded client run used a deterministic coding prompt, temperature 0.2,
+400 output tokens, decode timing after the first token, and concurrency 1, 2,
+and 4. It also performed one tool-call and one reasoning transport smoke
+check. The clients never start, stop, or configure a server.
+
+The tested serving route is the custom
+[vLLM XPU build](https://github.com/arcitech-psp/vllm-xpu-arc), using the
+Tiel Sharp template, BF16 compute, FP8 KV cache, four 131,072-token slots,
+4,096 maximum batched tokens, three MTP draft tokens, and the `qwen3_coder`
+and `qwen3` parsers.
+
+### Reproduce the export
 
 ```bash
 python scripts/quantize_tiel.py SOURCE_BF16 COMPRESSED_TENSORS_REFERENCE OUT CALIBRATION.jsonl
 python scripts/make_bf16_mtp.py OUT BF16_MTP_REFERENCE OUT_WITH_MTP
 ```
 
-The quantizer uses the BF16 source, approximately 384 calibration windows of
-up to 2,048 tokens (the caller may set the script's environment controls),
-group size 128, block size 128, symmetric int4, BF16 group scales, and damped
-per-expert Hessians. It quantizes routed gate/up/down projections one layer at
-a time and feeds the dequantized result forward before moving to the next
-layer. The public description is intentionally limited to the method; the
-calibration conversations and raw log remain private.
+The quantizer defaults to approximately 384 calibration windows of up to 2,048
+tokens, batched in groups of four, with group size 128, block size 128,
+symmetric int4, BF16 group scales, and damped per-expert Hessians. The exact
+caller-owned calibration data is not part of this release.
 
-`make_bf16_mtp.py` takes only `mtp.*` tensors from an official BF16 reference,
-leaves the quantized body unchanged, and writes the MTP block in the format
-expected by the tested loader.
+## Limits and privacy
 
-## Lessons for other quantizers
-
-- Match the serving format exactly: compressed-tensors expects unsigned 0–15
-  nibbles with an implicit zero point of 8.
-- Quantize routed experts selectively when memory pressure is the main goal;
-  keeping attention, shared experts, norms, embeddings, and MTP in BF16 makes
-  the tradeoff easy to inspect.
-- Per-expert Hessians need damping and a fallback for experts with sparse or
-  dead columns.
-- Propagating quantized hidden states during calibration exposes accumulated
-  error that a layer-isolated measurement can miss.
-- Use the official BF16 MTP tensors unless an independently validated graft is
-  available. A fast-looking draft head is not enough if acceptance or output
-  quality collapses.
-
-## Limits and what's next
-
-This release is validated only on the tested Intel Arc Pro B70 setup and the
-custom vLLM XPU build. The internal quality comparison is not a public
-benchmark and publishes aggregate scores only. Long-context capacity is
-configuration- and driver-sensitive; the measured boundary was four
-131,072-token slots.
-
-Planned, not done: profile expert usage on representative workloads and
-evaluate hot-expert offload. Those are future experiments, not capabilities
-claimed by this release.
+- Validated only on the tested Intel Arc Pro B70 and custom vLLM XPU build.
+- CUDA, other Intel GPUs, and stock-vLLM equivalence are untested.
+- The v0.30 rebase is experimental, unbuilt, and unserved; it is not the measured route.
+- Long-context capacity is configuration- and driver-sensitive; the measured boundary is four 131,072-token slots.
+- The internal quality comparison is not a public benchmark.
+- No calibration data or private prompts are included.
 
 ## Credits
 
-Thank you to everyone whose work made this possible:
-
 - The Ornith team for `ornith-ai/Ornith-1.5-35B-A3B` and its MIT licensing.
 - `peculiar-ragdoll` for Tiel and the Sharp chat template.
-- biMEMO for the earlier int4/MTP reference work that helped orient the
-  comparison.
-- The vLLM project and its Intel XPU contributors for the serving foundation.
+- biMEMO for earlier int4/MTP reference work.
+- The vLLM project and Intel XPU contributors for the serving foundation.
 - Intel for the Arc hardware and XPU software stack.
-- The Hugging Face community for sharing models, tooling, and practical
-  feedback.
-
-Credit: GPT 5.6 Luna (Codex), directed by Claude.
+- The Hugging Face community for models, tooling, and practical feedback.
 
 ## Feedback and contact
 
-Please use the short feedback form when it is available:
-[https://docs.google.com/forms/d/1gaUBeulGlZwo8gt4eucGpg3biCKy-tli79urdTesXSI/viewform](https://docs.google.com/forms/d/1gaUBeulGlZwo8gt4eucGpg3biCKy-tli79urdTesXSI/viewform). For direct contact, email
-[parthpatel266@gmail.com](mailto:parthpatel266@gmail.com). The accounts for
-this release are [GitHub `arcitech-psp`](https://github.com/arcitech-psp) and
+Feedback form: [Google Form](https://docs.google.com/forms/d/1gaUBeulGlZwo8gt4eucGpg3biCKy-tli79urdTesXSI/viewform).
+Direct contact: [parthpatel266@gmail.com](mailto:parthpatel266@gmail.com).
+Release accounts: [GitHub `arcitech-psp`](https://github.com/arcitech-psp) and
 [Hugging Face `arcitech-psp`](https://huggingface.co/arcitech-psp).
 
-## Citation
+## License and related pages
 
-```text
-Tiel-Coder 35B-A3B GPTQ W4A16 for Intel Arc XPU, 2026.
-Independent experts-only GPTQ export of Ornith-1.5-35B-A3B with the
-official BF16 MTP block and Tiel Sharp chat template.
-Model: https://huggingface.co/arcitech-psp/Tiel-Coder-35B-A3B-W4A16-GPTQ-XPU-MTP
-Data and scripts: https://github.com/arcitech-psp/tiel-coder-xpu
-Serving build: https://github.com/arcitech-psp/vllm-xpu-arc
-```
+This data repository is MIT licensed as documented in `LICENSE`.
+
+- [Tiel-Coder model card](https://huggingface.co/arcitech-psp/Tiel-Coder-35B-A3B-W4A16-GPTQ-XPU-MTP)
+- [vLLM XPU repository](https://github.com/arcitech-psp/vllm-xpu-arc)
+- [How Tiel-Coder XPU was built](../docs/APPROACH.md)
