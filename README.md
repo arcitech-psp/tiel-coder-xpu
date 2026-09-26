@@ -186,7 +186,7 @@ Credit: GPT 5.6 Luna (Codex), directed by Claude.
 ## Feedback and contact
 
 Please use the short feedback form when it is available:
-[FEEDBACK_FORM_URL](FEEDBACK_FORM_URL). For direct contact, email
+[https://docs.google.com/forms/d/1gaUBeulGlZwo8gt4eucGpg3biCKy-tli79urdTesXSI/viewform](https://docs.google.com/forms/d/1gaUBeulGlZwo8gt4eucGpg3biCKy-tli79urdTesXSI/viewform). For direct contact, email
 [parthpatel266@gmail.com](mailto:parthpatel266@gmail.com). The accounts for
 this release are [GitHub `arcitech-psp`](https://github.com/arcitech-psp) and
 [Hugging Face `arcitech-psp`](https://huggingface.co/arcitech-psp).
