@@ -58,32 +58,45 @@ fastest one.
 Tokens per second (tokens/s) is how quickly generated text arrives. Higher is
 faster; shared total speed is the combined output of several users.
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/test-bench-dark.png"><img src="assets/test-bench-light.png" alt="ArciTech test bench specification card"></picture>
-
 ## Test system
 
-The short version: a consumer AM4 desktop with one 32 GB workstation GPU — no
-datacenter hardware.
+One ordinary AM4 desktop with one 32 GB workstation GPU — no datacenter hardware.
+Everything below was read from the machine itself.
 
-<details>
-<summary>Full test system</summary>
+### Compute
 
-| Part | Value |
+| Part | Details |
 |---|---|
-| GPU 1 (serves the model) | Intel Arc Pro B70, 32 GB |
-| GPU 2 (in the machine, not used for these tests) | Intel Arc A310 LP, 4 GB |
-| CPU | AMD Ryzen 7 5800X, 8 cores / 16 threads |
-| System memory | 32 GB DDR4-3200 (4 × 8 GB) |
-| Motherboard | ASUS ROG Strix B550-F Gaming (AM4, PCIe 4.0) |
-| Model storage (weights served from here) | 1 TB Samsung PM9A1 NVMe SSD (PCIe 4.0) |
-| Other storage (archive only; the model was not loaded from it) | 1.5 TB WD Green HDD |
-| OS | Ubuntu 24.04.4 LTS, Linux kernel 7.0 |
-| Intel GPU runtime | compute-runtime 26.22.38646.4 (Level Zero + OpenCL), Level Zero loader 1.28.6, IGC 2.11.12 |
-| Container | Docker 29.1.3 |
-| Serving stack | vLLM 0.27.2rc1.dev77+gac7509e2b (custom XPU build, `vllm-xpu-arc`), PyTorch 2.13.0+xpu, vllm-xpu-kernels 0.1.12.3 |
-| Serving settings | FP8 KV cache, 131,072-token context, 4 concurrent sequences, 4,096 max batched tokens, MTP with 3 draft tokens |
+| GPU — runs the model | **Intel Arc Pro B70**, 32 GB (30.3 GiB usable), 256 compute units, up to 2.8 GHz, on **PCIe 4.0 x16** (the card supports PCIe 5.0; the B550 board tops out at 4.0) |
+| Second GPU — idle in these tests | Intel Arc A310 LP, 4 GB, on PCIe 3.0 x4 (chipset slot) |
+| CPU | **AMD Ryzen 7 5800X**, 8 cores / 16 threads, 32 MB L3 + 4 MB L2 cache, up to 5.49 GHz as reported by the OS |
 
-</details>
+### Memory and storage
+
+| Part | Details |
+|---|---|
+| System memory | **32 GB DDR4-3200**, 4 × 8 GB, dual channel |
+| Motherboard | ASUS ROG Strix B550-F Gaming (AM4), PCIe 4.0 lanes from the CPU |
+| Model storage — weights load from here | **Samsung PM9A1 1 TB NVMe**, PCIe 4.0 x4 |
+| Other drive — archive only | WD Green 1.5 TB HDD; the model is not loaded from it |
+
+### Usage while serving
+
+| What | Amount |
+|---|---|
+| Model weights | **22.0 GB** (20.5 GiB) in 42 files, including the 1.7 GB draft (MTP) head |
+| GPU memory reserved by vLLM | 97% of 30.3 GiB, about **29.4 GiB** (weights + KV cache + runtime) |
+| KV cache | **546,708 tokens** in FP8 — room for 4.17 full 131,072-token conversations |
+| Host memory in use | about 7.5 GB of 32 GB (spot reading with the vLLM server running) |
+
+### Software
+
+| Part | Details |
+|---|---|
+| OS | Ubuntu 24.04.4 LTS, Linux kernel 7.0 |
+| Intel GPU driver | compute-runtime 26.22.38646.4 (Level Zero + OpenCL), Level Zero loader 1.28.6, IGC 2.11.12 |
+| Serving stack | Docker 29.1.3, vLLM 0.27.2rc1.dev77+gac7509e2b ([custom XPU build](https://github.com/arcitech-psp/vllm-xpu-arc)), PyTorch 2.13.0+xpu, vllm-xpu-kernels 0.1.12.3 |
+| Serving settings | FP8 KV cache, 131,072-token context, 4 concurrent sequences, 4,096 max batched tokens, 3 MTP draft tokens |
 
 ## Results for a general audience
 
