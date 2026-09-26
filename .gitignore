@@ -1,0 +1,7 @@
+# Model weights and local runtime material do not belong in this data repo.
+*.safetensors
+*.gguf
+*.pt
+*.log
+__pycache__/
+.pytest_cache/
