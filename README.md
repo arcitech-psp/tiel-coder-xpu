@@ -52,8 +52,8 @@ concurrent chats, and the faster int4 build lost quality. We built our own:
 | Community Tiel GGUF on vLLM | 216–217 | 1.23–1.27 | 2 |
 | Community AutoRound int4 + MTP | 213–215 | 0.34–0.35 | 4 |
 
-The result is the best-scoring build we measured, within about 10% of the
-fastest one.
+The result is the best-scoring build we measured: 3.4× faster per task than the GGUF route, and within
+0.02 s per task of the fastest build.
 
 Tokens per second (tokens/s) is how quickly generated text arrives. Higher is
 faster; shared total speed is the combined output of several users.
