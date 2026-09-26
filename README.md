@@ -105,7 +105,7 @@ helpers are client-only and never start, stop, or configure a server.
 
 ```bash
 MODEL_DIR=/models/Tiel-Coder-35B-A3B-W4A16-GPTQ-XPU-MTP \
-VLLM_XPU_IMAGE=VLLM_XPU_REPO_IMAGE \
+VLLM_XPU_IMAGE=vllm-xpu-arc:local \
 bash scripts/serve-tiel-gptq.sh
 ```
 

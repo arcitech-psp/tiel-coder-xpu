@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Set MODEL_DIR to the directory containing this release.
 MODEL_DIR="${MODEL_DIR:-/models/Tiel-Coder-35B-A3B-W4A16-GPTQ-XPU-MTP}"
-IMAGE="${VLLM_XPU_IMAGE:-VLLM_XPU_REPO_IMAGE}"
+IMAGE="${VLLM_XPU_IMAGE:-vllm-xpu-arc:local}"
 
 docker run --rm --name tiel-coder \
   --device /dev/dri --ipc host --shm-size 4g \
