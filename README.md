@@ -5,7 +5,7 @@
 [![vLLM XPU build](https://img.shields.io/badge/vLLM%20XPU-build-blue.svg)](https://github.com/arcitech-psp/vllm-xpu-arc)
 
 <picture><source media="(prefers-color-scheme: dark)" srcset="assets/arcitech-logo-white.png"><img src="assets/arcitech-logo-black.png" alt="ArciTech logo"></picture>
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/hero-dark.png"><img src="assets/hero-light.png" alt="Tiel-Coder XPU build and quantization release"></picture>
+<img src="assets/hero-dark.png" alt="Tiel-Coder XPU build and quantization release">
 
 ArciTech's Arc-native build of Tiel-Coder — fast, and the highest-quality build
 we measured. This repository holds the public data, scripts, charts, and
@@ -46,11 +46,11 @@ concurrent chats, and the faster int4 build lost quality. We built our own:
    MTP on XPU, FP8 KV cache, and a configuration that fits four 131K-token
    conversations on 32 GB.
 
-| Build on the same Arc Pro B70 | Internal eval (224 tasks) | Concurrent 128K chats | 1 user / 4 users (tok/s) |
+| Build on the same Arc Pro B70 | Internal eval (of 224) | Seconds per task | Concurrent 128K chats |
 |---|---:|---:|---:|
-| **This release (GPTQ-A, ours)** | **219** | **4** | 116.9 / 339.9 |
-| AutoRound int4 build, repacked | 213–215 | 4 | 132.0 / 374.8 |
-| Community GGUF build (k-quant) | 216 | 2 | — (earlier campaign; not the same speed method) |
+| **This release (GPTQ-A, ours)** | **219** | **0.36** | **4** |
+| Community Tiel GGUF on vLLM | 216–217 | 1.23–1.27 | 2 |
+| Community AutoRound int4 + MTP | 213–215 | 0.34–0.35 | 4 |
 
 The result is the best-scoring build we measured, within about 10% of the
 fastest one.
@@ -98,52 +98,34 @@ Everything below was read from the machine itself.
 | Serving stack | Docker 29.1.3, vLLM 0.27.2rc1.dev77+gac7509e2b ([custom XPU build](https://github.com/arcitech-psp/vllm-xpu-arc)), PyTorch 2.13.0+xpu, vllm-xpu-kernels 0.1.12.3 |
 | Serving settings | FP8 KV cache, 131,072-token context, 4 concurrent sequences, 4,096 max batched tokens, 3 MTP draft tokens |
 
-## Results for a general audience
+## Measured results
 
-### Speed: one user or a shared queue
+<img src="assets/card-quality-speed.png" alt="Points missed and seconds per task on the same 100-task agentic coding eval: Tiel-Coder XPU 5 missed in 0.36 s, community GGUF on vLLM 7 and 8 missed in 1.27 s and 1.23 s, AutoRound int4 9 to 11 missed in 0.34 to 0.35 s">
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/speed-comparison-dark.png"><img src="assets/speed-comparison-light.png" alt="Per-user and shared total decode speed at one, two, and four users"></picture>
+Every build below carries the same Ornith-1.5 weights and Sharp template and ran through the same runner,
+the same 100 tasks and the same Arc Pro B70.
 
-GPTQ-A is the release build. FAST CT2 is the comparison build from the
-community AutoRound quant, measured with the same reference method. The speed
-chart shows both a single conversation's pace and the combined pace when users
-share the model.
-
-| Build | 1 user | 2 users | 4 users |
+| Build | Points (of 224) | Missed | Seconds per task |
 |---|---:|---:|---:|
-| GPTQ-A (this release), per-stream / aggregate tok/s | 116.9 / 113.4 | 105.9, 113.6 / 195.6 | 94.0, 92.5, 92.5, 93.0 / 339.9 |
-| FAST CT2, per-stream / aggregate tok/s | 132.0 / 127.7 | 120.8, 125.0 / 228.6 | 99.3, 101.1, 101.0, 100.4 / 374.8 |
+| **Tiel-Coder XPU (ours) — GPTQ-A int4 + MTP** | **219** | **5** | **0.36** |
+| Community Tiel GGUF on vLLM — BF16 dense | 217 | 7 | 1.27 |
+| Community Tiel GGUF on vLLM — FP8 dense | 216 | 8 | 1.23 |
+| Community AutoRound int4 + MTP (two runs) | 213–215 | 9–11 | 0.34–0.35 |
 
-### Quality: the internal coding check
+Our build scores highest (code 181/184, tool 18/20, edit 20/20) and finishes each task 3.4× faster than the
+GGUF route. The aggregate summaries are in [`bench/eval/`](bench/eval/).
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/quality-comparison-dark.png"><img src="assets/quality-comparison-light.png" alt="Internal 224-task coding evaluation comparison"></picture>
+<img src="assets/card-throughput.png" alt="Decode speed per user and in total at one, two and four users: 116.9 tokens/s for one user, 339.9 tokens/s total for four">
 
-The internal 224-task agentic coding evaluation is aggregate-only. The task
-prompts, private references, and per-task records are not released.
+| Users at once | Per user (tokens/s) | Total (tokens/s) |
+|---|---:|---:|
+| 1 | 116.9 | 113.4 |
+| 2 | 105.9–113.6 | 195.6 |
+| 4 | 92.5–94.0 | 339.9 |
 
-| Build | Total | Code (184) | Tool (20) | Edit (20) |
-|---|---:|---:|---:|---:|
-| GPTQ-A (this release) | 219 / 224 | 181 | 18 | 20 |
-| FAST CT2 (comparison) | 213–215 / 224 | 176–178 | 18 | 19 |
+<img src="assets/card-inside.png" alt="93.5 percent of the weights are routed experts in GPTQ int4; 6.5 percent stay in BF16">
 
-GPTQ-A scored higher on this internal quality comparison; FAST CT2 was faster
-on the reference decode measurement.
-
-### What is inside?
-
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/precision-split-dark.png"><img src="assets/precision-split-light.png" alt="Logical precision split: routed expert GPTQ int4 and BF16 tensors"></picture>
-
-The logical parameter split is approximately 93.5% routed expert GPTQ int4 and
-6.5% BF16. This is a logical parameter view; it does not count scales, packing
-metadata, or other storage overhead.
-
-### MTP: accepted guesses can reduce repeated work
-
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/mtp-acceptance-dark.png"><img src="assets/mtp-acceptance-light.png" alt="MTP acceptance by draft position"></picture>
-
-Multi-token prediction (MTP) proposes a few tokens ahead. The main model checks
-those guesses; accepted guesses let it verify several tokens in one pass.
-GPTQ-A acceptance by configured draft position was 74.3%, 50.9%, and 35.6%.
+<img src="assets/card-mtp.png" alt="Multi-token prediction acceptance by draft position: 74.3, 50.9 and 35.6 percent">
 
 ## How to read this
 

@@ -1,0 +1,12 @@
+{
+  "arm": "gptq-a-q2",
+  "tasks": 100,
+  "score": 219,
+  "max_score": 224,
+  "by_category": {
+    "code": 181,
+    "tool": 18,
+    "edit": 20
+  },
+  "mean_latency_s": 0.362
+}

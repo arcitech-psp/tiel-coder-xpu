@@ -1,0 +1,12 @@
+{
+  "arm": "ct2-official-spec3",
+  "tasks": 100,
+  "score": 215,
+  "max_score": 224,
+  "by_category": {
+    "code": 178,
+    "tool": 18,
+    "edit": 19
+  },
+  "mean_latency_s": 0.346
+}
