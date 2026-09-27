@@ -112,10 +112,25 @@ The fixed route passed cold/warm identity and a 20-minute, four-chat soak with z
 
 <img src="assets/card-throughput.png" alt="Median-of-three speed comparison for one stream, four streams, and six cookbook cells">
 
+### Compared with our first release
+
+| | First release (Sept 26) | This update | Change |
+|---|---:|---:|---:|
+| One user, decode | 116.9 tok/s | **148 tok/s** (median; best run 152) | **+27%** |
+| Four users, total | 339.9 tok/s | **380.4 tok/s** | **+12%** |
+| Four users, each | 92.5–94.0 tok/s | **102 tok/s** (median of 24; best 108) | **+9%** |
+| Peak cell (8K prompt, 512 out) | — | **174.3 tok/s** | — |
+| Quality (internal eval, /224) | 219 (single run) | **217.7 average of 10, best 221** | best run +2 |
+
+Same card, same weights, same four 131K slots. For a strictly fair read: re-measured the same
+night with this update's harness, the first-release build gives 132.7 tok/s (one user) and
+373.1 (four users), so part of the jump is the more careful measurement and part is the new
+serving route. Both comparisons are below.
+
 The speed table is the median of three blocks from the `tfinal_bench.sh` measurement, run back-to-back with the
 baseline. Every cell uses the same deterministic `tfast_bench.py` method.
 
-| Cell | Baseline | Fixed build | Change | Cookbook reference |
+| Cell | Same-night re-run of the first-release build | This update | Change | Cookbook reference |
 |---|---:|---:|---:|---:|
 | bench, 1 stream | 132.7 | **144.4** | **+8.8%** | — |
 | bench, 4 streams | 373.1 | **380.4** | **+2.0%** | — |
