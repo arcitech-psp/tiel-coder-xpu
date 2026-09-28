@@ -268,4 +268,3 @@ This data repository is MIT licensed as documented in `LICENSE`.
 
 - [Tiel-Coder model card](https://huggingface.co/arcitech-psp/Tiel-Coder-35B-A3B-W4A16-GPTQ-XPU-MTP)
 - [vLLM XPU repository](https://github.com/arcitech-psp/vllm-xpu-arc)
-- [How Tiel-Coder XPU was built](../docs/APPROACH.md)
