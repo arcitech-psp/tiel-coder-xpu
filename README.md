@@ -1,5 +1,7 @@
 # Tiel-Coder 35B-A3B — GPTQ W4A16 for Intel Arc XPU
 
+**Source:** [peculiar-ragdoll's Tiel-Coder-35B-A3B](https://huggingface.co/peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF-MTP), which is [Ornith-1.5-35B-A3B](https://huggingface.co/ornith-ai/Ornith-1.5-35B-A3B) with peculiar-ragdoll's [Sharp chat template](https://huggingface.co/peculiar-ragdoll/Qwen-Sharp-Chat-Templates). This build is quantized from Ornith's official BF16 weights and ships the same Tiel Sharp template.
+
 [![MIT license](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Hugging Face model](https://img.shields.io/badge/Hugging%20Face-model-orange.svg)](https://huggingface.co/arcitech-psp/Tiel-Coder-35B-A3B-W4A16-GPTQ-XPU-MTP)
 [![vLLM XPU build](https://img.shields.io/badge/vLLM%20XPU-build-blue.svg)](https://github.com/arcitech-psp/vllm-xpu-arc)
@@ -22,10 +24,10 @@ reproducibility notes; the weights are on
 
 ## What we did to improve it
 
-Tiel-Coder is Ornith-1.5-35B-A3B's weights with `peculiar-ragdoll`'s Sharp
-chat template. The existing ways to run it on Intel Arc forced a trade-off:
-the community GGUF build scored well but its MoE kernel topped out at two
-concurrent chats, and the faster int4 build lost quality. We built our own:
+[Tiel-Coder](https://huggingface.co/peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF-MTP) is [Ornith-1.5-35B-A3B](https://huggingface.co/ornith-ai/Ornith-1.5-35B-A3B)'s weights with `peculiar-ragdoll`'s
+[Sharp chat template](https://huggingface.co/peculiar-ragdoll/Qwen-Sharp-Chat-Templates). The existing ways to run it on Intel Arc forced a trade-off:
+the [community GGUF build](https://huggingface.co/peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF) scored well but its MoE kernel topped out at two
+concurrent chats, and the [faster int4 build](https://huggingface.co/biMEMO/Ornith-1.5-35B-A3B-int4-AutoRound-MTP) lost quality. We built our own:
 
 1. **Our own quantization from the original BF16 weights.** GPTQ int4 on the
    routed experts only, with a separate activation-aware Hessian for every
@@ -46,8 +48,8 @@ concurrent chats, and the faster int4 build lost quality. We built our own:
 | Build on the same Arc Pro B70 | Internal eval (of 224) | Seconds per task | Concurrent 128K chats |
 |---|---:|---:|---:|
 | **This release (fixed-K3 GPTQ-A + draft INT4)** | **217.7 mean** | **144.4 / 380.4 tok/s** | **4** |
-| Community Tiel GGUF on vLLM | 216–217 | 1.23–1.27 | 2 |
-| Community AutoRound int4 + MTP | 213–215 | 0.34–0.35 | 4 |
+| [Community Tiel GGUF](https://huggingface.co/peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF) on vLLM | 216–217 | 1.23–1.27 | 2 |
+| [Community AutoRound int4 + MTP](https://huggingface.co/biMEMO/Ornith-1.5-35B-A3B-int4-AutoRound-MTP) (biMEMO) | 213–215 | 0.34–0.35 | 4 |
 
 The original published single-run score of 219 remains in the record. In the controlled ten-run
 comparison, the new fixed route averaged 217.7 and the same-night baseline averaged 217.2;
@@ -183,13 +185,13 @@ Fixed K3 uses the first three; the fourth is retained from the K4 acceptance scr
 
 We kept the parts that steer the model's behaviour in BF16 and quantized only
 the routed expert projections. The export uses per-expert GPTQ, group size 128,
-propagated hidden states, the official BF16 MTP head, and the Tiel Sharp chat
-template. Attention, Gated DeltaNet linear attention, shared experts, routing,
+propagated hidden states, the official BF16 MTP head, and the Tiel [Sharp chat
+template](https://huggingface.co/peculiar-ragdoll/Qwen-Sharp-Chat-Templates). Attention, Gated DeltaNet linear attention, shared experts, routing,
 normalization, embeddings, the output head, the vision tower, and MTP tensors
 remain BF16.
 
 The public recipe starts from the BF16
-`ornith-ai/Ornith-1.5-35B-A3B` source, gathers caller-owned activation statistics,
+[`ornith-ai/Ornith-1.5-35B-A3B`](https://huggingface.co/ornith-ai/Ornith-1.5-35B-A3B) source, gathers caller-owned activation statistics,
 quantizes routed gate/up/down projections one layer at a time, and feeds the
 dequantized hidden states into the next layer. The calibration conversations
 and prompts are private and are not included here.
@@ -242,12 +244,18 @@ caller-owned calibration data is not part of this release.
 
 ## Credits
 
-- The Ornith team for `ornith-ai/Ornith-1.5-35B-A3B` and its MIT licensing.
-- `peculiar-ragdoll` for Tiel and the Sharp chat template.
-- biMEMO for earlier int4/MTP reference work.
-- The vLLM project and Intel XPU contributors for the serving foundation.
-- Intel for the Arc hardware and XPU software stack.
-- The Hugging Face community for models, tooling, and practical feedback.
+- [`peculiar-ragdoll`](https://huggingface.co/peculiar-ragdoll) — [Tiel-Coder-35B-A3B](https://huggingface.co/peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF-MTP)
+  (the source this release is named after; also published as [GGUF](https://huggingface.co/peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF))
+  and the [Sharp chat template](https://huggingface.co/peculiar-ragdoll/Qwen-Sharp-Chat-Templates) shipped with the model as `chat_template.jinja`.
+- [Ornith team (`ornith-ai`)](https://huggingface.co/ornith-ai) — [Ornith-1.5-35B-A3B](https://huggingface.co/ornith-ai/Ornith-1.5-35B-A3B),
+  the upstream model of Tiel-Coder, its official BF16 weights and MTP head, and MIT licensing.
+- [biMEMO](https://huggingface.co/biMEMO) — [Ornith-1.5-35B-A3B-int4-AutoRound-MTP](https://huggingface.co/biMEMO/Ornith-1.5-35B-A3B-int4-AutoRound-MTP),
+  earlier int4/MTP reference work and the AutoRound int4 + MTP build compared above.
+- [Community Tiel GGUF](https://huggingface.co/peculiar-ragdoll/Tiel-Coder-35B-A3B-GGUF) by `peculiar-ragdoll` — the GGUF build compared above.
+- [Intel Arc Pro B70 inference cookbook](https://github.com/SergiioB/intel-arc-pro-b70-inference-cookbook) by SergiioB — the public speed reference.
+- [vLLM project](https://github.com/vllm-project/vllm) and Intel XPU contributors ([vllm-xpu-kernels](https://github.com/vllm-project/vllm-xpu-kernels)) — serving foundation and XPU work.
+- Intel — Arc hardware and XPU software stack ([compute-runtime](https://github.com/intel/compute-runtime)).
+- [Hugging Face](https://huggingface.co) community — models, tools, and practical feedback.
 
 ## Feedback
 
