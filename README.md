@@ -6,7 +6,7 @@
 [![Hugging Face model](https://img.shields.io/badge/Hugging%20Face-model-orange.svg)](https://huggingface.co/arcitech-psp/Tiel-Coder-35B-A3B-W4A16-GPTQ-XPU-MTP)
 [![vLLM XPU build](https://img.shields.io/badge/vLLM%20XPU-build-blue.svg)](https://github.com/arcitech-psp/vllm-xpu-arc)
 
-<picture><source media="(prefers-color-scheme: dark)" srcset="assets/at-logo-white.png"><img src="assets/at-logo-black.png" alt="ARCITECH" width="120"></picture>
+<picture><source media="(prefers-color-scheme: dark)" srcset="assets/ait-mark-on-dark.svg"><img src="assets/ait-mark-on-light.svg" alt="ARCITECH" width="120"></picture>
 <img src="assets/hero-dark.png" alt="Tiel-Coder XPU build and quantization release">
 
 ARCITECH's Arc-native build of Tiel-Coder — fast, and the highest-quality build
